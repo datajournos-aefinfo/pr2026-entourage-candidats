@@ -1,0 +1,29 @@
+name: Publier l'onglet Excel en CSV
+
+on:
+  repository_dispatch:
+    types: [maj-csv]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publication-csv
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ecrire le CSV recu de Power Automate
+        if: github.event_name == 'repository_dispatch' && github.event.client_payload.csv != ''
+        env:
+          CSV_B64: ${{ github.event.client_payload.csv }}
+        run: |
+          mkdir -p data
+          printf '%s' "$CSV_B64" | base64 -d > entourage.csv
+          echo "CSV recu via payload ($(wc -c < entourage.csv) octets)"
