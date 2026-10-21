@@ -1,0 +1,64 @@
+name: Publier les onglets Excel en CSV
+
+on:
+  repository_dispatch:
+    types: [maj-csv]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publication-csv
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ecrire tous les CSV
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: |
+          set -euo pipefail
+
+          BUNDLE=$(printf '%s' "$PAYLOAD" \
+            | jq -r 'if type == "string" then (fromjson? // {}) else . end | .bundle // empty')
+
+          [ -n "$BUNDLE" ] || { echo "::error::Champ 'bundle' absent du payload."; exit 1; }
+
+          printf '%s' "$BUNDLE" | tr -d '[:space:]' | base64 -d > /tmp/paquet.json
+          jq empty /tmp/paquet.json || { echo "::error::JSON invalide apres decodage."; exit 1; }
+
+          mkdir -p data
+          NB=0
+          while read -r item; do
+            NOM=$(printf '%s' "$item" | jq -r '.fichier')
+
+            # Securite : on refuse tout chemin, on ne garde qu'un nom de fichier sain
+            NOM=$(basename "$NOM")
+            case "$NOM" in
+              *[!A-Za-z0-9._-]* | "" | .* )
+                echo "::error::Nom de fichier refuse : $NOM"; exit 1 ;;
+            esac
+
+            printf '%s' "$item" | jq -r '.contenu' > "data/$NOM"
+            echo "  - data/$NOM : $(wc -c < "data/$NOM") octets"
+            NB=$((NB+1))
+          done < <(jq -c '.[]' /tmp/paquet.json)
+
+          echo "$NB fichier(s) ecrit(s)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commiter et pousser
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f data/
+          if git diff --staged --quiet; then
+            echo "::warning::Aucun changement."
+          else
+            git commit -m "MAJ CSV ($(git diff --staged --name-only | wc -l) fichiers) - $(date -u '+%Y-%m-%d %H:%M') UTC"
+            git push
+          fi
