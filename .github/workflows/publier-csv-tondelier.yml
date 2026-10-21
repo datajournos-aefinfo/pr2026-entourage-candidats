@@ -1,8 +1,8 @@
-name: Publier l'onglet Excel en CSV
+name: Publier l'onglet Tondelier en CSV
 
 on:
   repository_dispatch:
-    types: [maj-csv]
+    types: [maj-csv-tondelier]
   workflow_dispatch:
 
 permissions:
@@ -49,23 +49,23 @@ jobs:
           mkdir -p data
 
           # Tente un decodage base64 ; bascule en texte brut si ce n'en est pas
-          if printf '%s' "$CSV_FIELD" | tr -d '[:space:]' | base64 -d > entourage.csv 2>/dev/null \
-             && [ -s entourage.csv ]; then
+          if printf '%s' "$CSV_FIELD" | tr -d '[:space:]' | base64 -d > entourage-tondelier.csv 2>/dev/null \
+             && [ -s entourage-tondelier.csv ]; then
             echo "Contenu decode depuis base64."
           else
-            printf '%s' "$CSV_FIELD" > entourage.csv
+            printf '%s' "$CSV_FIELD" > entourage-tondelier.csv
             echo "Contenu ecrit en texte brut."
           fi
 
-          echo "Resultat : $(wc -c < entourage.csv) octets, $(wc -l < entourage.csv) lignes"
+          echo "Resultat : $(wc -c < entourage-tondelier.csv) octets, $(wc -l < entourage-tondelier.csv) lignes"
           echo "--- 3 premieres lignes ---"
-          head -3 entourage.csv
+          head -3 entourage-tondelier.csv
 
       - name: Commiter et pousser
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f entourage.csv
+          git add -f entourage-tondelier.csv
           if git diff --staged --quiet; then
             echo "::warning::Contenu identique au precedent, aucun commit effectue."
           else
