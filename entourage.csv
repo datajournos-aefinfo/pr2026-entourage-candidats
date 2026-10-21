@@ -1,4 +1,4 @@
-donnees,de,test
-A,1,VRAI
-B,2,FAUX
-C,3,VRAI
+donnees,de,test,supp,nope
+A,1,VRAI,yes,hi
+B,2,FAUX,yes,hi
+C,3,VRAI,yes,hi
